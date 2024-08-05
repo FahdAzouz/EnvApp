@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">EnvApp</string>
+    <string name="cpu_usage">CPU Usage</string>
+    <string name="ram_usage">RAM Usage</string>
+    <string name="simulation_intensity">Simulation Intensity</string>
+    <string name="start_simulation">Start Simulation</string>
+    <string name="default_percentage">0%</string>
+    <string name="default_intensity">50%</string>
+    <string name="percentage_format">%d%%</string>
+</resources>
