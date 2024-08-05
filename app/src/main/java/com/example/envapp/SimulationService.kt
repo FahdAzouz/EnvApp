@@ -8,7 +8,6 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import kotlinx.coroutines.*
 
 class SimulationService : Service() {
 
@@ -16,30 +15,46 @@ class SimulationService : Service() {
     private val channelId = "SimulationServiceChannel"
     private val notificationId = 1
     private var lastNotificationUpdate = 0L
+    private var isSimulating = false
 
     companion object {
         const val ACTION_USAGE_UPDATE = "com.example.envapp.ACTION_USAGE_UPDATE"
         const val EXTRA_CPU_USAGE = "extra_cpu_usage"
         const val EXTRA_RAM_USAGE = "extra_ram_usage"
+        const val ACTION_START_SIMULATION = "com.example.envapp.ACTION_START_SIMULATION"
+        const val ACTION_STOP_SIMULATION = "com.example.envapp.ACTION_STOP_SIMULATION"
+        const val ACTION_UPDATE_INTENSITY = "com.example.envapp.ACTION_UPDATE_INTENSITY"
     }
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        resourceSimulator = ResourceSimulator(
-            onCpuUsageChanged = { cpu -> broadcastUpdate(cpu, null) },
-            onRamUsageChanged = { ram -> broadcastUpdate(null, ram) }
-        )
+        resourceSimulator = ResourceSimulator(this) { cpu, ram ->
+            broadcastUpdate(cpu, ram)
+        }
+        resourceSimulator.startMonitoring()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.d("SimulationService", "onStartCommand called")
-        val intensity = intent?.getIntExtra("intensity", 50) ?: 50
-        resourceSimulator.setIntensity(intensity)
-        resourceSimulator.startSimulation()
-
+        when (intent?.action) {
+            ACTION_START_SIMULATION -> {
+                val intensity = intent.getIntExtra("intensity", 50)
+                resourceSimulator.setIntensity(intensity)
+                resourceSimulator.startSimulation()
+                Log.d("SimulationService", "Starting simulation with intensity: $intensity")
+            }
+            ACTION_STOP_SIMULATION -> {
+                resourceSimulator.stopSimulation()
+                Log.d("SimulationService", "Stopping simulation")
+            }
+            ACTION_UPDATE_INTENSITY -> {
+                val intensity = intent.getIntExtra("intensity", 50)
+                resourceSimulator.setIntensity(intensity)
+                Log.d("SimulationService", "Updating intensity to: $intensity")
+            }
+        }
         startForeground(notificationId, createNotification(0f, 0f))
-
         return START_STICKY
     }
 
@@ -51,11 +66,32 @@ class SimulationService : Service() {
         Log.d("SimulationService", "onDestroy called")
     }
 
+    private fun createNotification(cpuUsage: Float, ramUsage: Float): Notification {
+        val notificationIntent = Intent(this, MainActivity::class.java)
+        val pendingIntent = PendingIntent.getActivity(
+            this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val content = if (isSimulating) {
+            "Simulating - CPU: ${cpuUsage.toInt()}%, RAM: ${ramUsage.toInt()}%"
+        } else {
+            "Monitoring - CPU: ${cpuUsage.toInt()}%, RAM: ${ramUsage.toInt()}%"
+        }
+
+        return NotificationCompat.Builder(this, channelId)
+            .setContentTitle("Resource Usage")
+            .setContentText(content)
+            .setSmallIcon(R.drawable.ic_stat_name)
+            .setContentIntent(pendingIntent)
+            .setOnlyAlertOnce(true)
+            .build()
+    }
+
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "Simulation Service Channel"
             val descriptionText = "Channel for Simulation Service"
-            val importance = NotificationManager.IMPORTANCE_LOW
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
             val channel = NotificationChannel(channelId, name, importance).apply {
                 description = descriptionText
             }
@@ -65,32 +101,17 @@ class SimulationService : Service() {
         }
     }
 
-    private fun createNotification(cpuUsage: Float, ramUsage: Float): Notification {
-        val notificationIntent = Intent(this, MainActivity::class.java)
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE
-        )
-
-        return NotificationCompat.Builder(this, channelId)
-            .setContentTitle("Resource Simulation")
-            .setContentText("CPU: ${cpuUsage.toInt()}%, RAM: ${(ramUsage / 4 * 100).toInt()}%")
-            .setSmallIcon(R.drawable.ic_stat_name)
-            .setContentIntent(pendingIntent)
-            .setOnlyAlertOnce(true)
-            .build()
-    }
-
-    private fun broadcastUpdate(cpuUsage: Float?, ramUsage: Float?) {
+    private fun broadcastUpdate(cpuUsage: Float, ramUsage: Float) {
         val intent = Intent(ACTION_USAGE_UPDATE).apply {
-            cpuUsage?.let { putExtra(EXTRA_CPU_USAGE, it) }
-            ramUsage?.let { putExtra(EXTRA_RAM_USAGE, it) }
+            putExtra(EXTRA_CPU_USAGE, cpuUsage)
+            putExtra(EXTRA_RAM_USAGE, ramUsage)
         }
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
         Log.d("SimulationService", "Broadcast sent: CPU: $cpuUsage, RAM: $ramUsage")
 
         val currentTime = System.currentTimeMillis()
         if (currentTime - lastNotificationUpdate >= 5000) {  // Update every 5 seconds
-            updateNotification(cpuUsage ?: resourceSimulator.lastCpuUsage, ramUsage ?: resourceSimulator.lastRamUsage)
+            updateNotification(cpuUsage, ramUsage)
             lastNotificationUpdate = currentTime
         }
     }
