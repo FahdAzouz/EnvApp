@@ -30,6 +30,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var simulationSwitch: SwitchCompat
     private lateinit var updateButton: Button
 
+    companion object {
+        private const val CHANNEL_ID = "permission_channel"
+        private const val NOTIFICATION_ID = 1
+    }
+
     private val usageUpdateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             Log.d("MainActivity", "Received broadcast: ${intent?.action}")

@@ -2,10 +2,12 @@ package com.example.envapp
 
 import android.app.ActivityManager
 import android.content.Context
-import android.os.Debug
 import android.os.Process
+import android.os.Build
 import kotlinx.coroutines.*
+import java.io.RandomAccessFile
 import kotlin.math.max
+import android.util.Log
 import kotlin.math.min
 
 class ResourceSimulator(
@@ -18,8 +20,18 @@ class ResourceSimulator(
     private var cpuThreads: List<Thread> = emptyList()
     private var ramAllocation: ByteArray? = null
     private var isSimulating = false
-    private var lastCpuTime = 0L
-    private var lastRealTime = 0L
+    private var lastCpuUsage = 0f
+    private var lastIdleTime = 0L
+    private var lastTotalTime = 0L
+
+    companion object {
+        init {
+            System.loadLibrary("memory_allocator")
+        }
+    }
+
+    private external fun allocateMemory(intensity: Int)
+    private external fun freeAllocatedMemory()
 
     fun startSimulation() {
         isSimulating = true
@@ -65,14 +77,14 @@ class ResourceSimulator(
         ramAllocation = null
 
         // Start CPU consumption
-        val threadCount = (intensity * maxThreads / 100).coerceAtLeast(1)
+        val threadCount = (intensity * maxThreads / 100).coerceIn(1, maxThreads)
         cpuThreads = List(threadCount) {
             Thread {
                 while (!Thread.currentThread().isInterrupted) {
-                    // CPU-intensive operation
-                    var result = 0.0
-                    repeat(1000000) { i ->
-                        result += kotlin.math.sin(i.toDouble())
+                    // Busy-wait to simulate CPU load
+                    val start = System.nanoTime()
+                    while (System.nanoTime() - start < 1000000) { // 1 millisecond
+                        // Simulating CPU work
                     }
                 }
             }.apply { start() }
@@ -81,31 +93,35 @@ class ResourceSimulator(
         // Consume RAM
         try {
             val maxMemoryToAllocate = (Runtime.getRuntime().maxMemory() * 0.25).toLong() // Max 25% of available memory
-            val memoryToAllocate = min((intensity * 10L * 1024 * 1024), maxMemoryToAllocate)
-            ramAllocation = ByteArray(memoryToAllocate.toInt())
+            val memoryToAllocate = (intensity * maxMemoryToAllocate / 100).coerceIn(0, maxMemoryToAllocate).toInt()
+            ramAllocation = ByteArray(memoryToAllocate)
         } catch (e: OutOfMemoryError) {
             e.printStackTrace()
         }
     }
 
+
     private fun measureCpuUsage(): Float {
-        val currentCpuTime = Debug.threadCpuTimeNanos()
-        val currentRealTime = System.nanoTime()
+        try {
+            // We can log or measure the CPU usage via the ActivityManager's getProcessMemoryInfo method
+            val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+            val memoryInfo = activityManager.getProcessMemoryInfo(intArrayOf(Process.myPid()))
 
-        val cpuUsage = if (lastRealTime > 0) {
-            val cpuTimeDiff = currentCpuTime - lastCpuTime
-            val realTimeDiff = currentRealTime - lastRealTime
-            (cpuTimeDiff * 100.0 / realTimeDiff).toFloat().coerceIn(0f, 100f)
-        } else {
-            0f
+            val totalPss = memoryInfo[0].totalPss.toFloat()
+            val totalMemory = Runtime.getRuntime().totalMemory().toFloat()
+            val usedMemory = totalMemory - Runtime.getRuntime().freeMemory().toFloat()
+
+            val cpuUsage = (usedMemory / totalMemory * 100).coerceIn(0f, 100f)
+
+            // Add some randomness to simulate fluctuations
+            val randomFactor = (Math.random() * 10 - 5).toFloat()
+            lastCpuUsage = max(0f, cpuUsage)
+
+            return lastCpuUsage
+        } catch (e: Exception) {
+            e.printStackTrace()
+            return lastCpuUsage
         }
-
-        lastCpuTime = currentCpuTime
-        lastRealTime = currentRealTime
-
-        // Add some randomness to simulate fluctuations
-        val randomFactor = (Math.random() * 10 - 5).toFloat()
-        return max(0f, min(100f, cpuUsage + randomFactor + (if (isSimulating) intensity.toFloat() else 0f)))
     }
 
     private fun measureRamUsage(): Float {
@@ -117,8 +133,7 @@ class ResourceSimulator(
         val availableMemory = memoryInfo.availMem.toFloat()
         val usedMemory = totalMemory - availableMemory
 
-        // Add some randomness to simulate fluctuations
-        val randomFactor = (Math.random() * 5 - 2.5).toFloat()
-        return ((usedMemory / totalMemory * 100) + randomFactor + (if (isSimulating) intensity.toFloat() / 2 else 0f)).coerceIn(0f, 100f)
+        val ramUsage = (usedMemory / totalMemory * 100).coerceIn(0f, 100f)
+        return ramUsage
     }
 }
