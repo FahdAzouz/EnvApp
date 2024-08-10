@@ -11,7 +11,11 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 class SimulationService : Service() {
 
-    private lateinit var resourceSimulator: ResourceSimulator
+    private val resourceSimulator by lazy {
+        ResourceSimulator(this) { cpu, ram ->
+            broadcastUpdate(cpu, ram)
+        }
+    }
     private val channelId = "SimulationServiceChannel"
     private val notificationId = 1
     private var lastNotificationUpdate = 0L
@@ -29,9 +33,6 @@ class SimulationService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        resourceSimulator = ResourceSimulator(this) { cpu, ram ->
-            broadcastUpdate(cpu, ram)
-        }
         resourceSimulator.startMonitoring()
     }
 
@@ -42,10 +43,12 @@ class SimulationService : Service() {
                 val intensity = intent.getIntExtra("intensity", 50)
                 resourceSimulator.setIntensity(intensity)
                 resourceSimulator.startSimulation()
+                isSimulating = true
                 Log.d("SimulationService", "Starting simulation with intensity: $intensity")
             }
             ACTION_STOP_SIMULATION -> {
                 resourceSimulator.stopSimulation()
+                isSimulating = false
                 Log.d("SimulationService", "Stopping simulation")
             }
             ACTION_UPDATE_INTENSITY -> {
@@ -58,11 +61,14 @@ class SimulationService : Service() {
         return START_STICKY
     }
 
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
         super.onDestroy()
         resourceSimulator.stopSimulation()
+        resourceSimulator.cancelAllCoroutines() // This will cancel all coroutines
+
         Log.d("SimulationService", "onDestroy called")
     }
 
