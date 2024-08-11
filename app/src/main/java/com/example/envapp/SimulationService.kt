@@ -28,6 +28,7 @@ class SimulationService : Service() {
         const val ACTION_START_SIMULATION = "com.example.envapp.ACTION_START_SIMULATION"
         const val ACTION_STOP_SIMULATION = "com.example.envapp.ACTION_STOP_SIMULATION"
         const val ACTION_UPDATE_INTENSITY = "com.example.envapp.ACTION_UPDATE_INTENSITY"
+        const val EXTRA_IS_LOADING = "extra_is_loading"
     }
 
     override fun onCreate() {
@@ -40,35 +41,39 @@ class SimulationService : Service() {
         Log.d("SimulationService", "onStartCommand called")
         when (intent?.action) {
             ACTION_START_SIMULATION -> {
+                broadcastUpdate(isLoading = true)
                 val intensity = intent.getIntExtra("intensity", 50)
                 resourceSimulator.setIntensity(intensity)
                 resourceSimulator.startSimulation()
                 isSimulating = true
                 Log.d("SimulationService", "Starting simulation with intensity: $intensity")
+                broadcastUpdate(isLoading = false)
             }
             ACTION_STOP_SIMULATION -> {
+                broadcastUpdate(isLoading = true)
                 resourceSimulator.stopSimulation()
                 isSimulating = false
                 Log.d("SimulationService", "Stopping simulation")
+                broadcastUpdate(isLoading = false)
             }
             ACTION_UPDATE_INTENSITY -> {
+                broadcastUpdate(isLoading = true)
                 val intensity = intent.getIntExtra("intensity", 50)
                 resourceSimulator.setIntensity(intensity)
                 Log.d("SimulationService", "Updating intensity to: $intensity")
+                broadcastUpdate(isLoading = false)
             }
         }
         startForeground(notificationId, createNotification(0f, 0f))
         return START_STICKY
     }
 
-
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onDestroy() {
         super.onDestroy()
         resourceSimulator.stopSimulation()
-        resourceSimulator.cancelAllCoroutines() // This will cancel all coroutines
-
+        resourceSimulator.cancelAllCoroutines()
         Log.d("SimulationService", "onDestroy called")
     }
 
@@ -107,13 +112,14 @@ class SimulationService : Service() {
         }
     }
 
-    private fun broadcastUpdate(cpuUsage: Float, ramUsage: Float) {
+    private fun broadcastUpdate(cpuUsage: Float = -1f, ramUsage: Float = -1f, isLoading: Boolean = false) {
         val intent = Intent(ACTION_USAGE_UPDATE).apply {
             putExtra(EXTRA_CPU_USAGE, cpuUsage)
             putExtra(EXTRA_RAM_USAGE, ramUsage)
+            putExtra(EXTRA_IS_LOADING, isLoading)
         }
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
-        Log.d("SimulationService", "Broadcast sent: CPU: $cpuUsage, RAM: $ramUsage")
+        Log.d("SimulationService", "Broadcast sent: CPU: $cpuUsage, RAM: $ramUsage, Loading: $isLoading")
 
         val currentTime = System.currentTimeMillis()
         if (currentTime - lastNotificationUpdate >= 5000) {  // Update every 5 seconds

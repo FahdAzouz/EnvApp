@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.View
 import android.util.Log
 import android.widget.Button
 import android.widget.ProgressBar
@@ -29,25 +30,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var intensityPercentage: TextView
     private lateinit var simulationSwitch: SwitchCompat
     private lateinit var updateButton: Button
+    private lateinit var loadingIndicator: ProgressBar
+    private lateinit var statusText: TextView
 
     companion object {
         private const val CHANNEL_ID = "permission_channel"
         private const val NOTIFICATION_ID = 1
-    }
-
-    private val usageUpdateReceiver = object : BroadcastReceiver() {
-        override fun onReceive(context: Context?, intent: Intent?) {
-            Log.d("MainActivity", "Received broadcast: ${intent?.action}")
-            intent?.let {
-                val cpuUsage = it.getFloatExtra(SimulationService.EXTRA_CPU_USAGE, -1f)
-                val ramUsage = it.getFloatExtra(SimulationService.EXTRA_RAM_USAGE, -1f)
-                Log.d("MainActivity", "CPU Usage: $cpuUsage, RAM Usage: $ramUsage")
-                runOnUiThread {
-                    if (cpuUsage != -1f) updateCpuUsage(cpuUsage)
-                    if (ramUsage != -1f) updateRamUsage(ramUsage)
-                }
-            }
-        }
     }
 
     private val requestPermissionLauncher =
@@ -72,6 +60,8 @@ class MainActivity : AppCompatActivity() {
         intensityPercentage = findViewById(R.id.intensityPercentage)
         simulationSwitch = findViewById(R.id.simulationSwitch)
         updateButton = findViewById(R.id.updateButton)
+        loadingIndicator = findViewById(R.id.loadingIndicator)
+        statusText = findViewById(R.id.statusText)
 
         setupListeners()
     }
@@ -115,6 +105,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateSimulationIntensity() {
+        showLoading("Adjusting RAM load...")
         val intent = Intent(this, SimulationService::class.java).apply {
             action = SimulationService.ACTION_UPDATE_INTENSITY
             putExtra("intensity", intensitySlider.progress)
@@ -137,6 +128,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startSimulationService() {
+        showLoading("Starting simulation...")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             when {
                 ContextCompat.checkSelfPermission(
@@ -173,6 +165,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun stopSimulationService() {
+        showLoading("Stopping simulation...")
         val intent = Intent(this, SimulationService::class.java).apply {
             action = SimulationService.ACTION_STOP_SIMULATION
         }
@@ -180,13 +173,35 @@ class MainActivity : AppCompatActivity() {
         Log.d("MainActivity", "Stopped SimulationService")
     }
 
-    private fun updateSimulationIntensity(intensity: Int) {
-        val intent = Intent(this, SimulationService::class.java).apply {
-            action = SimulationService.ACTION_UPDATE_INTENSITY
-            putExtra("intensity", intensity)
+    private fun showLoading(message: String) {
+        loadingIndicator.visibility = View.VISIBLE
+        statusText.text = message
+    }
+
+    private fun hideLoading() {
+        loadingIndicator.visibility = View.GONE
+        statusText.text = getString(R.string.status_idle)
+    }
+
+    private val usageUpdateReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            Log.d("MainActivity", "Received broadcast: ${intent?.action}")
+            intent?.let {
+                val cpuUsage = it.getFloatExtra(SimulationService.EXTRA_CPU_USAGE, -1f)
+                val ramUsage = it.getFloatExtra(SimulationService.EXTRA_RAM_USAGE, -1f)
+                val isLoading = it.getBooleanExtra(SimulationService.EXTRA_IS_LOADING, false)
+                Log.d("MainActivity", "CPU Usage: $cpuUsage, RAM Usage: $ramUsage, Is Loading: $isLoading")
+                runOnUiThread {
+                    if (cpuUsage != -1f) updateCpuUsage(cpuUsage)
+                    if (ramUsage != -1f) updateRamUsage(ramUsage)
+                    if (isLoading) {
+                        showLoading("Adjusting RAM load...")
+                    } else {
+                        hideLoading()
+                    }
+                }
+            }
         }
-        startService(intent)
-        Log.d("MainActivity", "Updated simulation intensity: $intensity")
     }
 
 }

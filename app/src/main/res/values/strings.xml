@@ -8,4 +8,6 @@
     <string name="default_intensity">50%</string>
     <string name="percentage_format">%d%%</string>
     <string name="update">Update</string>
+    <string name="status_idle">Idle</string>
+
 </resources>
