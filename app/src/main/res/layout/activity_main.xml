@@ -9,96 +9,173 @@
     tools:context=".MainActivity">
 
     <TextView
-        android:id="@+id/cpuLabel"
+        android:id="@+id/titleText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/cpu_usage"
-        android:textSize="18sp"
+        android:text="@string/app_name"
+        android:textSize="24sp"
         android:textStyle="bold"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent"/>
-
-    <ProgressBar
-        android:id="@+id/cpuProgressBar"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        app:layout_constraintTop_toBottomOf="@id/cpuLabel"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"/>
 
-
-    <TextView
-        android:id="@+id/cpuPercentage"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="@string/default_percentage"
-        app:layout_constraintTop_toBottomOf="@id/cpuProgressBar"
-        app:layout_constraintEnd_toEndOf="@id/cpuProgressBar"/>
-
-    <TextView
-        android:id="@+id/ramLabel"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/ram_usage"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:layout_marginTop="24dp"
-        app:layout_constraintTop_toBottomOf="@id/cpuPercentage"
-        app:layout_constraintStart_toStartOf="parent"/>
-
-    <ProgressBar
-        android:id="@+id/ramProgressBar"
-        style="?android:attr/progressBarStyleHorizontal"
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cpuCard"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        app:layout_constraintTop_toBottomOf="@id/ramLabel"
+        android:layout_marginTop="16dp"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="4dp"
+        app:layout_constraintTop_toBottomOf="@id/titleText"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        app:layout_constraintEnd_toEndOf="parent">
 
-    <TextView
-        android:id="@+id/ramPercentage"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:text="@string/default_percentage"
-        app:layout_constraintTop_toBottomOf="@id/ramProgressBar"
-        app:layout_constraintEnd_toEndOf="@id/ramProgressBar"/>
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp">
 
-    <TextView
-        android:id="@+id/intensityLabel"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/simulation_intensity"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:layout_marginTop="24dp"
-        app:layout_constraintTop_toBottomOf="@id/ramPercentage"
-        app:layout_constraintStart_toStartOf="parent"/>
+            <TextView
+                android:id="@+id/cpuLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/cpu_usage"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toStartOf="parent"/>
 
-    <SeekBar
-        android:id="@+id/intensitySlider"
+            <ProgressBar
+                android:id="@+id/cpuProgressBar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:layout_constraintTop_toBottomOf="@id/cpuLabel"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/cpuPercentage"/>
+
+            <TextView
+                android:id="@+id/cpuPercentage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/default_percentage"
+                android:minWidth="50dp"
+                app:layout_constraintTop_toTopOf="@id/cpuProgressBar"
+                app:layout_constraintBottom_toBottomOf="@id/cpuProgressBar"
+                app:layout_constraintEnd_toEndOf="parent"/>
+
+            <TextView
+                android:id="@+id/cpuIntensityLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/cpu_intensity"
+                android:layout_marginTop="16dp"
+                app:layout_constraintTop_toBottomOf="@id/cpuProgressBar"
+                app:layout_constraintStart_toStartOf="parent"/>
+
+            <SeekBar
+                android:id="@+id/cpuIntensitySlider"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:max="100"
+                android:progress="50"
+                app:layout_constraintTop_toBottomOf="@id/cpuIntensityLabel"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/cpuIntensityPercentage"/>
+
+            <TextView
+                android:id="@+id/cpuIntensityPercentage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/default_intensity"
+                android:minWidth="50dp"
+                app:layout_constraintTop_toTopOf="@id/cpuIntensitySlider"
+                app:layout_constraintBottom_toBottomOf="@id/cpuIntensitySlider"
+                app:layout_constraintEnd_toEndOf="parent"/>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </com.google.android.material.card.MaterialCardView>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/ramCard"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:max="100"
-        android:progress="50"
-        app:layout_constraintTop_toBottomOf="@id/intensityLabel"
+        android:layout_marginTop="16dp"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="4dp"
+        app:layout_constraintTop_toBottomOf="@id/cpuCard"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/intensityPercentage"/>
+        app:layout_constraintEnd_toEndOf="parent">
 
-    <TextView
-        android:id="@+id/intensityPercentage"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="@string/default_intensity"
-        android:minWidth="50dp"
-        app:layout_constraintTop_toTopOf="@id/intensitySlider"
-        app:layout_constraintBottom_toBottomOf="@id/intensitySlider"
-        app:layout_constraintEnd_toEndOf="parent"/>
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:padding="16dp">
+
+            <TextView
+                android:id="@+id/ramLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/ram_usage"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintStart_toStartOf="parent"/>
+
+            <ProgressBar
+                android:id="@+id/ramProgressBar"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                app:layout_constraintTop_toBottomOf="@id/ramLabel"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/ramPercentage"/>
+
+            <TextView
+                android:id="@+id/ramPercentage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/default_percentage"
+                android:minWidth="50dp"
+                app:layout_constraintTop_toTopOf="@id/ramProgressBar"
+                app:layout_constraintBottom_toBottomOf="@id/ramProgressBar"
+                app:layout_constraintEnd_toEndOf="parent"/>
+
+            <TextView
+                android:id="@+id/ramIntensityLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/ram_intensity"
+                android:layout_marginTop="16dp"
+                app:layout_constraintTop_toBottomOf="@id/ramProgressBar"
+                app:layout_constraintStart_toStartOf="parent"/>
+
+            <SeekBar
+                android:id="@+id/ramIntensitySlider"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:max="100"
+                android:progress="50"
+                app:layout_constraintTop_toBottomOf="@id/ramIntensityLabel"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintEnd_toStartOf="@id/ramIntensityPercentage"/>
+
+            <TextView
+                android:id="@+id/ramIntensityPercentage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/default_intensity"
+                android:minWidth="50dp"
+                app:layout_constraintTop_toTopOf="@id/ramIntensitySlider"
+                app:layout_constraintBottom_toBottomOf="@id/ramIntensitySlider"
+                app:layout_constraintEnd_toEndOf="parent"/>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </com.google.android.material.card.MaterialCardView>
 
     <androidx.appcompat.widget.SwitchCompat
         android:id="@+id/simulationSwitch"
@@ -106,7 +183,7 @@
         android:layout_height="48dp"
         android:text="@string/start_simulation"
         android:layout_marginTop="24dp"
-        app:layout_constraintTop_toBottomOf="@id/intensitySlider"
+        app:layout_constraintTop_toBottomOf="@id/ramCard"
         app:layout_constraintStart_toStartOf="parent"/>
 
     <Button
@@ -119,15 +196,15 @@
         app:layout_constraintStart_toStartOf="parent"/>
 
     <ProgressBar
-    android:id="@+id/loadingIndicator"
-    android:layout_width="wrap_content"
-    android:layout_height="wrap_content"
-    android:visibility="gone"
-    app:layout_constraintBottom_toTopOf="@+id/statusText"
-    app:layout_constraintEnd_toEndOf="parent"
-    app:layout_constraintStart_toStartOf="parent"
-    app:layout_constraintTop_toBottomOf="@id/updateButton"
-    app:layout_constraintVertical_chainStyle="packed" />
+        android:id="@+id/loadingIndicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@+id/statusText"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/updateButton"
+        app:layout_constraintVertical_chainStyle="packed" />
 
     <TextView
         android:id="@+id/statusText"

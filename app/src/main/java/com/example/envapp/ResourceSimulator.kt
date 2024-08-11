@@ -8,6 +8,7 @@ import kotlinx.coroutines.*
 import android.util.Log
 import java.nio.ByteBuffer
 import kotlin.math.max
+import kotlinx.coroutines.*
 import kotlin.math.min
 import kotlin.coroutines.CoroutineContext
 import kotlin.random.Random
@@ -21,14 +22,16 @@ class ResourceSimulator(
 
     private val job = Job()
     private var simulationJob: Job? = null
-    private var intensity: Int = 50
     private val maxThreads = Runtime.getRuntime().availableProcessors()
+    private var cpuJobs: List<Job> = emptyList()
     private var cpuThreads: List<Thread> = emptyList()
     private var isSimulating = false
     private val memoryAllocations = mutableListOf<Any>()
     private val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
     private val maxAllowedMemoryUsage: Long
         get() = (activityManager.memoryClass * 1024 * 1024 * 0.8).toLong() // 80% of max memory class
+    private var cpuIntensity: Int = 50
+    private var ramIntensity: Int = 50
 
     fun startSimulation() {
         isSimulating = true
@@ -65,41 +68,61 @@ class ResourceSimulator(
         }
     }
 
-    fun setIntensity(newIntensity: Int) {
-        intensity = newIntensity
+    fun setCpuIntensity(newIntensity: Int) {
+        cpuIntensity = newIntensity
         if (isSimulating) {
             launch {
-                updateResourceConsumption()
+                updateCpuConsumption()
+            }
+        }
+    }
+
+    fun setRamIntensity(newIntensity: Int) {
+        ramIntensity = newIntensity
+        if (isSimulating) {
+            launch {
+                updateRamConsumption()
             }
         }
     }
 
     private suspend fun updateResourceConsumption() {
-        cpuThreads.forEach { it.interrupt() }
+        updateCpuConsumption()
+        updateRamConsumption()
+    }
+
+    private suspend fun updateCpuConsumption() {
+        cpuJobs.forEach { it.cancel() }
+
+        val threadCount = min((cpuIntensity * maxThreads / 100), maxThreads)
+        cpuJobs = List(threadCount) {
+            launch(Dispatchers.Default) {
+                while (isActive) {
+                    val workDuration = (cpuIntensity.toFloat() / 100 * 10_000_000).toLong() // nanoseconds
+                    val sleepDuration = 10_000_000 - workDuration // nanoseconds
+
+                    val startTime = System.nanoTime()
+                    while (System.nanoTime() - startTime < workDuration) {
+                        // Busy wait
+                    }
+                    delay(sleepDuration / 1_000_000) // Convert to milliseconds for delay
+                }
+            }
+        }
+    }
+
+    private suspend fun updateRamConsumption() {
         releaseMemory()
         System.gc() // Suggest garbage collection
 
-        // Start CPU consumption
-        val threadCount = (intensity * maxThreads / 100).coerceIn(1, maxThreads)
-        cpuThreads = List(threadCount) {
-            Thread {
-                while (!Thread.currentThread().isInterrupted) {
-                    // Busy-wait to simulate CPU load
-                    val start = System.nanoTime()
-                    while (System.nanoTime() - start < 1000000) { } // 1 millisecond
-                    Thread.yield() // Allow other threads to run
-                }
-            }.apply { start() }
-        }
-
         // Consume RAM
-        val targetMemoryUsage = min((maxAllowedMemoryUsage * intensity) / 100, maxAllowedMemoryUsage)
+        val targetMemoryUsage = min((maxAllowedMemoryUsage * ramIntensity) / 100, maxAllowedMemoryUsage)
         var allocatedMemory = 0L
 
         while (allocatedMemory < targetMemoryUsage && isActive) {
             try {
                 val remainingToAllocate = targetMemoryUsage - allocatedMemory
-                val allocationSize = min(remainingToAllocate, 10 * 1024 * 1024).toInt() // Max 10MB per allocation
+                val allocationSize = min(remainingToAllocate, 1000 * 1024 * 1024).toInt() // Max 10MB per allocation
 
                 when (Random.nextInt(3)) {
                     0 -> {
@@ -130,7 +153,7 @@ class ResourceSimulator(
                 Log.d("ResourceSimulator", "Allocated ${allocatedMemory / 1024 / 1024}MB total")
 
                 yield() // Allow other coroutines to run
-                delay(10) // Small delay to prevent UI freezing
+                delay(1) // Small delay to prevent UI freezing
             } catch (e: OutOfMemoryError) {
                 Log.e("ResourceSimulator", "OOM while allocating, total: ${allocatedMemory / 1024 / 1024}MB", e)
                 break
@@ -148,8 +171,8 @@ class ResourceSimulator(
     }
 
     private fun measureCpuUsage(): Float {
-        // This is a simplified CPU usage calculation
-        return (intensity.toFloat() * 0.9f).coerceIn(0f, 100f)
+        // This is a simplified CPU usage calculation based on the intensity
+        return (cpuIntensity.toFloat() * 0.9f).coerceIn(0f, 100f)
     }
 
     private fun measureRamUsage(): Float {

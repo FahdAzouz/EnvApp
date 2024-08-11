@@ -42,11 +42,13 @@ class SimulationService : Service() {
         when (intent?.action) {
             ACTION_START_SIMULATION -> {
                 broadcastUpdate(isLoading = true)
-                val intensity = intent.getIntExtra("intensity", 50)
-                resourceSimulator.setIntensity(intensity)
+                val cpuIntensity = intent.getIntExtra("cpuIntensity", 50)
+                val ramIntensity = intent.getIntExtra("ramIntensity", 50)
+                resourceSimulator.setCpuIntensity(cpuIntensity)
+                resourceSimulator.setRamIntensity(ramIntensity)
                 resourceSimulator.startSimulation()
                 isSimulating = true
-                Log.d("SimulationService", "Starting simulation with intensity: $intensity")
+                Log.d("SimulationService", "Starting simulation with CPU intensity: $cpuIntensity, RAM intensity: $ramIntensity")
                 broadcastUpdate(isLoading = false)
             }
             ACTION_STOP_SIMULATION -> {
@@ -58,9 +60,11 @@ class SimulationService : Service() {
             }
             ACTION_UPDATE_INTENSITY -> {
                 broadcastUpdate(isLoading = true)
-                val intensity = intent.getIntExtra("intensity", 50)
-                resourceSimulator.setIntensity(intensity)
-                Log.d("SimulationService", "Updating intensity to: $intensity")
+                val cpuIntensity = intent.getIntExtra("cpuIntensity", 50)
+                val ramIntensity = intent.getIntExtra("ramIntensity", 50)
+                resourceSimulator.setCpuIntensity(cpuIntensity)
+                resourceSimulator.setRamIntensity(ramIntensity)
+                Log.d("SimulationService", "Updating intensity to: CPU $cpuIntensity, RAM $ramIntensity")
                 broadcastUpdate(isLoading = false)
             }
         }

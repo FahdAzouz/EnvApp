@@ -9,5 +9,6 @@
     <string name="percentage_format">%d%%</string>
     <string name="update">Update</string>
     <string name="status_idle">Idle</string>
-
+    <string name="cpu_intensity">CPU Intensity</string>
+    <string name="ram_intensity">RAM Intensity</string>
 </resources>

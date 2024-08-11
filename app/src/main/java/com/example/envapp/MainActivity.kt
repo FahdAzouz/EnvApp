@@ -26,12 +26,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var ramProgressBar: ProgressBar
     private lateinit var cpuPercentage: TextView
     private lateinit var ramPercentage: TextView
-    private lateinit var intensitySlider: SeekBar
-    private lateinit var intensityPercentage: TextView
     private lateinit var simulationSwitch: SwitchCompat
     private lateinit var updateButton: Button
     private lateinit var loadingIndicator: ProgressBar
     private lateinit var statusText: TextView
+    private lateinit var cpuIntensitySlider: SeekBar
+    private lateinit var cpuIntensityPercentage: TextView
+    private lateinit var ramIntensitySlider: SeekBar
+    private lateinit var ramIntensityPercentage: TextView
 
     companion object {
         private const val CHANNEL_ID = "permission_channel"
@@ -56,12 +58,14 @@ class MainActivity : AppCompatActivity() {
         ramProgressBar = findViewById(R.id.ramProgressBar)
         cpuPercentage = findViewById(R.id.cpuPercentage)
         ramPercentage = findViewById(R.id.ramPercentage)
-        intensitySlider = findViewById(R.id.intensitySlider)
-        intensityPercentage = findViewById(R.id.intensityPercentage)
         simulationSwitch = findViewById(R.id.simulationSwitch)
         updateButton = findViewById(R.id.updateButton)
         loadingIndicator = findViewById(R.id.loadingIndicator)
         statusText = findViewById(R.id.statusText)
+        cpuIntensitySlider = findViewById(R.id.cpuIntensitySlider)
+        cpuIntensityPercentage = findViewById(R.id.cpuIntensityPercentage)
+        ramIntensitySlider = findViewById(R.id.ramIntensitySlider)
+        ramIntensityPercentage = findViewById(R.id.ramIntensityPercentage)
 
         setupListeners()
     }
@@ -82,9 +86,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupListeners() {
-        intensitySlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+        cpuIntensitySlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                intensityPercentage.text = getString(R.string.percentage_format, progress)
+                cpuIntensityPercentage.text = getString(R.string.percentage_format, progress)
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {}
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {}
+        })
+
+        ramIntensitySlider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                ramIntensityPercentage.text = getString(R.string.percentage_format, progress)
             }
 
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
@@ -105,13 +118,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateSimulationIntensity() {
-        showLoading("Adjusting RAM load...")
+        showLoading("Adjusting CPU and RAM load...")
         val intent = Intent(this, SimulationService::class.java).apply {
             action = SimulationService.ACTION_UPDATE_INTENSITY
-            putExtra("intensity", intensitySlider.progress)
+            putExtra("cpuIntensity", cpuIntensitySlider.progress)
+            putExtra("ramIntensity", ramIntensitySlider.progress)
         }
         startService(intent)
-        Log.d("MainActivity", "Updated simulation intensity: ${intensitySlider.progress}")
+        Log.d("MainActivity", "Updated simulation intensity: CPU ${cpuIntensitySlider.progress}, RAM ${ramIntensitySlider.progress}")
     }
 
     private fun updateCpuUsage(usage: Float) {
@@ -138,7 +152,8 @@ class MainActivity : AppCompatActivity() {
                     // Permission is granted, start the service
                     val intent = Intent(this, SimulationService::class.java).apply {
                         action = SimulationService.ACTION_START_SIMULATION
-                        putExtra("intensity", intensitySlider.progress)
+                        putExtra("cpuIntensity", cpuIntensitySlider.progress)
+                        putExtra("ramIntensity", ramIntensitySlider.progress)
                     }
                     startService(intent)
                     Log.d("MainActivity", "Started SimulationService")
@@ -157,7 +172,8 @@ class MainActivity : AppCompatActivity() {
             // For versions below Android 13, just start the service
             val intent = Intent(this, SimulationService::class.java).apply {
                 action = SimulationService.ACTION_START_SIMULATION
-                putExtra("intensity", intensitySlider.progress)
+                putExtra("cpuIntensity", cpuIntensitySlider.progress)
+                putExtra("ramIntensity", ramIntensitySlider.progress)
             }
             startService(intent)
             Log.d("MainActivity", "Started SimulationService")
