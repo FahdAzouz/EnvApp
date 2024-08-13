@@ -29,9 +29,11 @@ class ResourceSimulator(
     private val memoryAllocations = mutableListOf<Any>()
     private val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
     private val maxAllowedMemoryUsage: Long
-        get() = (activityManager.memoryClass * 1024 * 1024 * 0.8).toLong() // 80% of max memory class
+        get() = (2000 * 0.8).toLong() // 80% of max memory class
     private var cpuIntensity: Int = 50
     private var ramIntensity: Int = 50
+    private var lastCpuUsage = 0f
+    private var lastMeasurementTime = System.currentTimeMillis()
 
     fun startSimulation() {
         isSimulating = true
@@ -69,19 +71,23 @@ class ResourceSimulator(
     }
 
     fun setCpuIntensity(newIntensity: Int) {
-        cpuIntensity = newIntensity
-        if (isSimulating) {
-            launch {
-                updateCpuConsumption()
+        if (cpuIntensity != newIntensity) {
+            cpuIntensity = newIntensity
+            if (isSimulating) {
+                launch {
+                    updateCpuConsumption()
+                }
             }
         }
     }
 
     fun setRamIntensity(newIntensity: Int) {
-        ramIntensity = newIntensity
-        if (isSimulating) {
-            launch {
-                updateRamConsumption()
+        if (ramIntensity != newIntensity) {
+            ramIntensity = newIntensity
+            if (isSimulating) {
+                launch {
+                    updateRamConsumption()
+                }
             }
         }
     }
@@ -114,46 +120,35 @@ class ResourceSimulator(
     private suspend fun updateRamConsumption() {
         releaseMemory()
         System.gc() // Suggest garbage collection
+        Log.d("ResourceSimulator", "maxed allowed memory: ${maxAllowedMemoryUsage}")
 
         // Consume RAM
-        val targetMemoryUsage = min((maxAllowedMemoryUsage * ramIntensity) / 100, maxAllowedMemoryUsage)
+        val targetMemoryUsage = min((maxAllowedMemoryUsage * ramIntensity) / 100, maxAllowedMemoryUsage) * 1024 * 1024
         var allocatedMemory = 0L
 
         while (allocatedMemory < targetMemoryUsage && isActive) {
             try {
                 val remainingToAllocate = targetMemoryUsage - allocatedMemory
-                val allocationSize = min(remainingToAllocate, 1000 * 1024 * 1024).toInt() // Max 10MB per allocation
 
-                when (Random.nextInt(3)) {
-                    0 -> {
-                        // Allocate and use a ByteArray
-                        val byteArray = ByteArray(allocationSize) { Random.nextInt().toByte() }
-                        byteArray.sum() // Use the array to prevent optimization
-                        memoryAllocations.add(byteArray)
-                        allocatedMemory += allocationSize
-                    }
-                    1 -> {
-                        // Allocate a Bitmap
-                        val side = sqrt(allocationSize / 4.0).toInt() // 4 bytes per pixel
-                        val bitmap = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
-                        val canvas = Canvas(bitmap)
-                        canvas.drawColor(Random.nextInt())
-                        memoryAllocations.add(bitmap)
-                        allocatedMemory += side * side * 4
-                    }
-                    2 -> {
-                        // Allocate native memory
-                        val buffer = ByteBuffer.allocateDirect(allocationSize)
-                        buffer.put(ByteArray(allocationSize) { Random.nextInt().toByte() })
-                        memoryAllocations.add(buffer)
-                        allocatedMemory += allocationSize
-                    }
-                }
+                // Calculate allocationSize based on ramIntensity and remaining memory to allocate
+                val allocationSize = min(
+                    (remainingToAllocate * ramIntensity / 100).toLong(),
+                    (maxAllowedMemoryUsage * 1024 * 1024) / 10 // Limit to 10% of max allowed memory per iteration
+                ).toInt()
+
+                // Allocate a Bitmap
+                val side = max(1, sqrt((allocationSize) / 4.0).toInt()) // Ensure side is at least 1
+                val bitmap = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
+                val canvas = Canvas(bitmap)
+                canvas.drawColor(Random.nextInt())
+                memoryAllocations.add(bitmap)
+                allocatedMemory += side * side * 4
+                Log.d("ResourceSimulator", "bitmap method was used <----------")
 
                 Log.d("ResourceSimulator", "Allocated ${allocatedMemory / 1024 / 1024}MB total")
 
                 yield() // Allow other coroutines to run
-                delay(1) // Small delay to prevent UI freezing
+                delay(10) // Small delay to prevent UI freezing
             } catch (e: OutOfMemoryError) {
                 Log.e("ResourceSimulator", "OOM while allocating, total: ${allocatedMemory / 1024 / 1024}MB", e)
                 break
