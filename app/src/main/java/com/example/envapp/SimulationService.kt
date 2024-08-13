@@ -34,7 +34,6 @@ class SimulationService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        resourceSimulator.startMonitoring()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -48,6 +47,7 @@ class SimulationService : Service() {
                 resourceSimulator.setRamIntensity(ramIntensity)
                 resourceSimulator.startSimulation()
                 isSimulating = true
+                startForeground(notificationId, createNotification(0f, 0f))
                 Log.d("SimulationService", "Starting simulation with CPU intensity: $cpuIntensity, RAM intensity: $ramIntensity")
                 broadcastUpdate(isLoading = false)
             }
@@ -55,8 +55,12 @@ class SimulationService : Service() {
                 broadcastUpdate(isLoading = true)
                 resourceSimulator.stopSimulation()
                 isSimulating = false
+                val currentCpuUsage = resourceSimulator.getCurrentCpuUsage()
+                val currentRamUsage = resourceSimulator.getCurrentRamUsage()
+                broadcastUpdate(currentCpuUsage, currentRamUsage, isLoading = false)
+                stopForeground(true)
+                stopSelf()
                 Log.d("SimulationService", "Stopping simulation")
-                broadcastUpdate(isLoading = false)
             }
             ACTION_UPDATE_INTENSITY -> {
                 broadcastUpdate(isLoading = true)
@@ -68,7 +72,6 @@ class SimulationService : Service() {
                 broadcastUpdate(isLoading = false)
             }
         }
-        startForeground(notificationId, createNotification(0f, 0f))
         return START_STICKY
     }
 
@@ -87,6 +90,13 @@ class SimulationService : Service() {
             this, 0, notificationIntent, PendingIntent.FLAG_IMMUTABLE
         )
 
+        val stopIntent = Intent(this, SimulationService::class.java).apply {
+            action = ACTION_STOP_SIMULATION
+        }
+        val stopPendingIntent = PendingIntent.getService(
+            this, 0, stopIntent, PendingIntent.FLAG_IMMUTABLE
+        )
+
         val content = if (isSimulating) {
             "Simulating - CPU: ${cpuUsage.toInt()}%, RAM: ${ramUsage.toInt()}%"
         } else {
@@ -98,6 +108,7 @@ class SimulationService : Service() {
             .setContentText(content)
             .setSmallIcon(R.drawable.ic_stat_name)
             .setContentIntent(pendingIntent)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Stop", stopPendingIntent)
             .setOnlyAlertOnce(true)
             .build()
     }

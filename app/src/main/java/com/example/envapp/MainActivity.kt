@@ -187,6 +187,7 @@ class MainActivity : AppCompatActivity() {
         }
         startService(intent)
         Log.d("MainActivity", "Stopped SimulationService")
+        // The final update will be received through the BroadcastReceiver
     }
 
     private fun showLoading(message: String) {
@@ -206,7 +207,10 @@ class MainActivity : AppCompatActivity() {
                 val cpuUsage = it.getFloatExtra(SimulationService.EXTRA_CPU_USAGE, -1f)
                 val ramUsage = it.getFloatExtra(SimulationService.EXTRA_RAM_USAGE, -1f)
                 val isLoading = it.getBooleanExtra(SimulationService.EXTRA_IS_LOADING, false)
-                Log.d("MainActivity", "CPU Usage: $cpuUsage, RAM Usage: $ramUsage, Is Loading: $isLoading")
+                Log.d(
+                    "MainActivity",
+                    "CPU Usage: $cpuUsage, RAM Usage: $ramUsage, Is Loading: $isLoading"
+                )
                 runOnUiThread {
                     if (cpuUsage != -1f) updateCpuUsage(cpuUsage)
                     if (ramUsage != -1f) updateRamUsage(ramUsage)
@@ -214,6 +218,10 @@ class MainActivity : AppCompatActivity() {
                         showLoading("Adjusting RAM load...")
                     } else {
                         hideLoading()
+                        if (!simulationSwitch.isChecked) {
+                            // Update UI to reflect that simulation is stopped
+                            statusText.text = getString(R.string.status_idle)
+                        }
                     }
                 }
             }

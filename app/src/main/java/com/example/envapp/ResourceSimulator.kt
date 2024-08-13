@@ -8,7 +8,6 @@ import kotlinx.coroutines.*
 import android.util.Log
 import java.nio.ByteBuffer
 import kotlin.math.max
-import kotlinx.coroutines.*
 import kotlin.math.min
 import kotlin.coroutines.CoroutineContext
 import kotlin.random.Random
@@ -29,7 +28,11 @@ class ResourceSimulator(
     private val memoryAllocations = mutableListOf<Any>()
     private val activityManager = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
     private val maxAllowedMemoryUsage: Long
-        get() = (2000 * 0.8).toLong() // 80% of max memory class
+        get() {
+            val memoryInfo = ActivityManager.MemoryInfo()
+            activityManager.getMemoryInfo(memoryInfo)
+            return (memoryInfo.totalMem * 0.8).toLong() // 80% of total device memory
+        }
     private var cpuIntensity: Int = 50
     private var ramIntensity: Int = 50
     private var lastCpuUsage = 0f
@@ -51,7 +54,6 @@ class ResourceSimulator(
         cpuThreads = emptyList()
         releaseMemory()
         System.gc() // Suggest garbage collection
-        startMonitoring()
     }
 
     fun startMonitoring() {
@@ -122,8 +124,9 @@ class ResourceSimulator(
         System.gc() // Suggest garbage collection
         Log.d("ResourceSimulator", "maxed allowed memory: ${maxAllowedMemoryUsage}")
 
+        releaseMemory()
         // Consume RAM
-        val targetMemoryUsage = min((maxAllowedMemoryUsage * ramIntensity) / 100, maxAllowedMemoryUsage) * 1024 * 1024
+        val targetMemoryUsage = min((maxAllowedMemoryUsage * ramIntensity) / 100, maxAllowedMemoryUsage)
         var allocatedMemory = 0L
 
         while (allocatedMemory < targetMemoryUsage && isActive) {
@@ -133,7 +136,7 @@ class ResourceSimulator(
                 // Calculate allocationSize based on ramIntensity and remaining memory to allocate
                 val allocationSize = min(
                     (remainingToAllocate * ramIntensity / 100).toLong(),
-                    (maxAllowedMemoryUsage * 1024 * 1024) / 10 // Limit to 10% of max allowed memory per iteration
+                    (maxAllowedMemoryUsage) / 10 // Limit to 10% of max allowed memory per iteration
                 ).toInt()
 
                 // Allocate a Bitmap
@@ -163,11 +166,22 @@ class ResourceSimulator(
             }
         }
         memoryAllocations.clear()
+        memoryAllocations.clear()
+    }
+
+    fun getCurrentCpuUsage(): Float {
+        // Implement a method to get current CPU usage without simulation
+        // This is a placeholder implementation
+        return measureCpuUsage()
+    }
+
+    fun getCurrentRamUsage(): Float {
+        return measureRamUsage()
     }
 
     private fun measureCpuUsage(): Float {
         // This is a simplified CPU usage calculation based on the intensity
-        return (cpuIntensity.toFloat() * 0.9f).coerceIn(0f, 100f)
+        return ((cpuIntensity.toFloat() * 0.9f) - 20).coerceIn(0f, 100f)
     }
 
     private fun measureRamUsage(): Float {
