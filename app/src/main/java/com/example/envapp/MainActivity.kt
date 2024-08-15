@@ -19,6 +19,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import android.widget.ImageView
+import androidx.appcompat.app.AlertDialog
 
 class MainActivity : AppCompatActivity() {
 
@@ -34,6 +36,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var cpuIntensityPercentage: TextView
     private lateinit var ramIntensitySlider: SeekBar
     private lateinit var ramIntensityPercentage: TextView
+    private lateinit var infoIcon: ImageView
+
 
     companion object {
         private const val CHANNEL_ID = "permission_channel"
@@ -66,8 +70,38 @@ class MainActivity : AppCompatActivity() {
         cpuIntensityPercentage = findViewById(R.id.cpuIntensityPercentage)
         ramIntensitySlider = findViewById(R.id.ramIntensitySlider)
         ramIntensityPercentage = findViewById(R.id.ramIntensityPercentage)
+        infoIcon = findViewById(R.id.infoIcon)
+        setupInfoIcon()
 
         setupListeners()
+    }
+
+    private fun setupInfoIcon() {
+        infoIcon.setOnClickListener {
+            showAppInfo()
+        }
+    }
+
+    private fun showAppInfo() {
+        val appInfo = """
+        App Functionality:
+        This app simulates CPU and RAM usage on your device. It allows you to control the intensity of the simulation and monitor the resource usage in real-time.
+
+        Key Features:
+        - Adjust CPU and RAM usage intensity
+        - Start and stop simulation
+        - Real-time monitoring of resource usage
+        - Background service for continuous simulation
+
+        Author: Fahd Azouz
+        Version: 1.0
+    """.trimIndent()
+
+        AlertDialog.Builder(this)
+            .setTitle("About EnvApp")
+            .setMessage(appInfo)
+            .setPositiveButton("OK") { dialog, _ -> dialog.dismiss() }
+            .show()
     }
 
     override fun onResume() {
