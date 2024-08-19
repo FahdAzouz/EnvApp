@@ -12,10 +12,11 @@ import androidx.localbroadcastmanager.content.LocalBroadcastManager
 class SimulationService : Service() {
 
     private val resourceSimulator by lazy {
-        ResourceSimulator(this) { cpu, ram ->
-            broadcastUpdate(cpu, ram)
+        ResourceSimulator(this) { detailedUsage ->
+            broadcastUpdate(detailedUsage)
         }
     }
+
     private val channelId = "SimulationServiceChannel"
     private val notificationId = 1
     private var lastNotificationUpdate = 0L
@@ -29,6 +30,8 @@ class SimulationService : Service() {
         const val ACTION_STOP_SIMULATION = "com.example.envapp.ACTION_STOP_SIMULATION"
         const val ACTION_UPDATE_INTENSITY = "com.example.envapp.ACTION_UPDATE_INTENSITY"
         const val EXTRA_IS_LOADING = "extra_is_loading"
+        const val EXTRA_DETAILED_USAGE = "extra_detailed_usage"
+
     }
 
     override fun onCreate() {
@@ -47,7 +50,6 @@ class SimulationService : Service() {
                 resourceSimulator.setRamIntensity(ramIntensity)
                 resourceSimulator.startSimulation()
                 isSimulating = true
-                startForeground(notificationId, createNotification(0f, 0f))
                 Log.d("SimulationService", "Starting simulation with CPU intensity: $cpuIntensity, RAM intensity: $ramIntensity")
                 broadcastUpdate(isLoading = false)
             }
@@ -55,9 +57,8 @@ class SimulationService : Service() {
                 broadcastUpdate(isLoading = true)
                 resourceSimulator.stopSimulation()
                 isSimulating = false
-                val currentCpuUsage = resourceSimulator.getCurrentCpuUsage()
-                val currentRamUsage = resourceSimulator.getCurrentRamUsage()
-                broadcastUpdate(currentCpuUsage, currentRamUsage, isLoading = false)
+                val currentUsage = resourceSimulator.getCurrentUsage()
+                broadcastUpdate(currentUsage, isLoading = false)
                 stopForeground(true)
                 stopSelf()
                 Log.d("SimulationService", "Stopping simulation")
@@ -72,6 +73,7 @@ class SimulationService : Service() {
                 broadcastUpdate(isLoading = false)
             }
         }
+        startForeground(notificationId, createNotification(0f, 0f))
         return START_STICKY
     }
 
@@ -127,18 +129,17 @@ class SimulationService : Service() {
         }
     }
 
-    private fun broadcastUpdate(cpuUsage: Float = -1f, ramUsage: Float = -1f, isLoading: Boolean = false) {
+    private fun broadcastUpdate(detailedUsage: DetailedUsage? = null, isLoading: Boolean = false) {
         val intent = Intent(ACTION_USAGE_UPDATE).apply {
-            putExtra(EXTRA_CPU_USAGE, cpuUsage)
-            putExtra(EXTRA_RAM_USAGE, ramUsage)
+            putExtra(EXTRA_DETAILED_USAGE, detailedUsage)
             putExtra(EXTRA_IS_LOADING, isLoading)
         }
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
-        Log.d("SimulationService", "Broadcast sent: CPU: $cpuUsage, RAM: $ramUsage, Loading: $isLoading")
+        Log.d("SimulationService", "Broadcast sent: $detailedUsage, Loading: $isLoading")
 
         val currentTime = System.currentTimeMillis()
         if (currentTime - lastNotificationUpdate >= 5000) {  // Update every 5 seconds
-            updateNotification(cpuUsage, ramUsage)
+            detailedUsage?.let { updateNotification(it.cpuUsage, it.ramUsage) }
             lastNotificationUpdate = currentTime
         }
     }

@@ -4,17 +4,27 @@ import android.app.ActivityManager
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import kotlinx.coroutines.*
+import android.os.Parcelable
 import android.util.Log
-import java.nio.ByteBuffer
+import kotlinx.coroutines.*
+import kotlinx.parcelize.Parcelize
+import kotlin.coroutines.CoroutineContext
 import kotlin.math.max
 import kotlin.math.min
-import kotlin.coroutines.CoroutineContext
 import kotlin.random.Random
+
+@Parcelize
+data class DetailedUsage(
+    val cpuUsage: Float,
+    val ramUsage: Float,
+    val runningProcesses: Int,
+    val availableRam: Long,
+    val totalRam: Long
+) : Parcelable
 
 class ResourceSimulator(
     private val context: Context,
-    private val onUsageChanged: (cpuUsage: Float, ramUsage: Float) -> Unit
+    private val onUsageChanged: (DetailedUsage) -> Unit
 ) : CoroutineScope {
     override val coroutineContext: CoroutineContext
         get() = Dispatchers.Default + job
@@ -37,6 +47,7 @@ class ResourceSimulator(
     private var ramIntensity: Int = 50
     private var lastCpuUsage = 0f
     private var lastMeasurementTime = System.currentTimeMillis()
+    private val usageHistory = mutableListOf<DetailedUsage>()
 
     fun startSimulation() {
         isSimulating = true
@@ -60,13 +71,10 @@ class ResourceSimulator(
         simulationJob?.cancel()
         simulationJob = launch {
             while (isActive) {
-                val cpuUsage = measureCpuUsage()
-                val ramUsage = measureRamUsage()
-
+                val detailedUsage = measureDetailedUsage()
                 withContext(Dispatchers.Main) {
-                    onUsageChanged(cpuUsage, ramUsage)
+                    onUsageChanged(detailedUsage)
                 }
-
                 delay(1000)  // Update every second
             }
         }
@@ -97,7 +105,39 @@ class ResourceSimulator(
     private suspend fun updateResourceConsumption() {
         updateCpuConsumption()
         updateRamConsumption()
+        val detailedUsage = measureDetailedUsage()
+        usageHistory.add(detailedUsage)
+        if (usageHistory.size > 60) { // Keep only last 60 data points (1 minute at 1 second intervals)
+            usageHistory.removeAt(0)
+        }
+        withContext(Dispatchers.Main) {
+            onUsageChanged(detailedUsage)
+        }
     }
+
+    private fun measureDetailedUsage(): DetailedUsage {
+        val cpuUsage = measureCpuUsage()
+        val ramUsage = measureRamUsage()
+        val runningProcesses = getRunningProcessesCount()
+        val memoryInfo = ActivityManager.MemoryInfo()
+        activityManager.getMemoryInfo(memoryInfo)
+
+        return DetailedUsage(
+            cpuUsage = cpuUsage,
+            ramUsage = ramUsage,
+            runningProcesses = runningProcesses,
+            availableRam = memoryInfo.availMem,
+            totalRam = memoryInfo.totalMem
+        )
+    }
+
+    private fun getRunningProcessesCount(): Int {
+        val runningAppProcesses = activityManager.runningAppProcesses
+        return runningAppProcesses?.size ?: 0
+    }
+
+    fun getUsageHistory(): List<DetailedUsage> = usageHistory.toList()
+
 
     private suspend fun updateCpuConsumption() {
         cpuJobs.forEach { it.cancel() }
@@ -169,14 +209,17 @@ class ResourceSimulator(
         memoryAllocations.clear()
     }
 
-    fun getCurrentCpuUsage(): Float {
-        // Implement a method to get current CPU usage without simulation
-        // This is a placeholder implementation
-        return measureCpuUsage()
-    }
+    fun getCurrentUsage(): DetailedUsage {
+        val memoryInfo = ActivityManager.MemoryInfo()
+        activityManager.getMemoryInfo(memoryInfo)
 
-    fun getCurrentRamUsage(): Float {
-        return measureRamUsage()
+        return DetailedUsage(
+            cpuUsage = measureCpuUsage(),
+            ramUsage = measureRamUsage(),
+            runningProcesses = getRunningProcessesCount(),
+            availableRam = memoryInfo.availMem,
+            totalRam = memoryInfo.totalMem
+        )
     }
 
     private fun measureCpuUsage(): Float {

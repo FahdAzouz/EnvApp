@@ -12,15 +12,20 @@ import android.os.Bundle
 import android.view.View
 import android.util.Log
 import android.widget.Button
+import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.SeekBar
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
-import android.widget.ImageView
-import androidx.appcompat.app.AlertDialog
+import com.github.mikephil.charting.charts.LineChart
+import com.github.mikephil.charting.data.Entry
+import com.github.mikephil.charting.data.LineData
+import com.github.mikephil.charting.data.LineDataSet
+
 
 class MainActivity : AppCompatActivity() {
 
@@ -37,11 +42,16 @@ class MainActivity : AppCompatActivity() {
     private lateinit var ramIntensitySlider: SeekBar
     private lateinit var ramIntensityPercentage: TextView
     private lateinit var infoIcon: ImageView
+    private lateinit var runningProcessesText: TextView
+    private lateinit var availableRamText: TextView
+    private lateinit var totalRamText: TextView
+    private lateinit var usageChart: LineChart
 
-
+    // In the MainActivity class, add this companion object
     companion object {
         private const val CHANNEL_ID = "permission_channel"
         private const val NOTIFICATION_ID = 1
+        private const val EXTRA_DETAILED_USAGE = "extra_detailed_usage"
     }
 
     private val requestPermissionLauncher =
@@ -71,9 +81,58 @@ class MainActivity : AppCompatActivity() {
         ramIntensitySlider = findViewById(R.id.ramIntensitySlider)
         ramIntensityPercentage = findViewById(R.id.ramIntensityPercentage)
         infoIcon = findViewById(R.id.infoIcon)
+        runningProcessesText = findViewById(R.id.runningProcessesText)
+        availableRamText = findViewById(R.id.availableRamText)
+        totalRamText = findViewById(R.id.totalRamText)
+        usageChart = findViewById(R.id.usageChart)
+        setupChart()
         setupInfoIcon()
 
         setupListeners()
+    }
+
+    private fun setupChart() {
+        usageChart.description.isEnabled = false
+        usageChart.setTouchEnabled(true)
+        usageChart.isDragEnabled = true
+        usageChart.setScaleEnabled(true)
+        usageChart.setDrawGridBackground(false)
+        usageChart.setPinchZoom(true)
+        usageChart.axisLeft.setDrawGridLines(false)
+        usageChart.axisRight.setDrawGridLines(false)
+        usageChart.xAxis.setDrawGridLines(false)
+    }
+
+    // Update the updateChart function to use DetailedUsage
+    private fun updateChart(detailedUsage: DetailedUsage) {
+        val data = usageChart.data
+
+        if (data == null) {
+            // If there's no data yet, create new datasets with mutable lists
+            val cpuDataSet = LineDataSet(mutableListOf(Entry(0f, detailedUsage.cpuUsage)), "CPU Usage")
+            cpuDataSet.color = ContextCompat.getColor(this, R.color.cpu_color)
+            cpuDataSet.setCircleColor(ContextCompat.getColor(this, R.color.cpu_color))
+
+            val ramDataSet = LineDataSet(mutableListOf(Entry(0f, detailedUsage.ramUsage)), "RAM Usage")
+            ramDataSet.color = ContextCompat.getColor(this, R.color.ram_color)
+            ramDataSet.setCircleColor(ContextCompat.getColor(this, R.color.ram_color))
+
+            val newData = LineData(cpuDataSet, ramDataSet)
+            usageChart.data = newData
+        } else {
+            // If data exists, add new entries
+            data.addEntry(Entry(data.getDataSetByIndex(0).entryCount.toFloat(), detailedUsage.cpuUsage), 0)
+            data.addEntry(Entry(data.getDataSetByIndex(1).entryCount.toFloat(), detailedUsage.ramUsage), 1)
+
+            data.notifyDataChanged()
+            usageChart.notifyDataSetChanged()
+
+            // Limit the number of visible entries
+            usageChart.setVisibleXRangeMaximum(240f) // show last 60 seconds of data
+            usageChart.moveViewToX(data.entryCount.toFloat())
+        }
+
+        usageChart.invalidate()
     }
 
     private fun setupInfoIcon() {
@@ -162,19 +221,6 @@ class MainActivity : AppCompatActivity() {
         Log.d("MainActivity", "Updated simulation intensity: CPU ${cpuIntensitySlider.progress}, RAM ${ramIntensitySlider.progress}")
     }
 
-    private fun updateCpuUsage(usage: Float) {
-        cpuProgressBar.progress = usage.toInt()
-        cpuPercentage.text = getString(R.string.percentage_format, usage.toInt())
-        Log.d("MainActivity", "Updated CPU Usage UI: ${usage.toInt()}%")
-    }
-
-    private fun updateRamUsage(usage: Float) {
-        val usagePercentage = usage.toInt()
-        ramProgressBar.progress = usagePercentage
-        ramPercentage.text = getString(R.string.percentage_format, usagePercentage)
-        Log.d("MainActivity", "Updated RAM Usage UI: $usagePercentage%")
-    }
-
     private fun startSimulationService() {
         showLoading("Starting simulation...")
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -236,30 +282,35 @@ class MainActivity : AppCompatActivity() {
 
     private val usageUpdateReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
-            Log.d("MainActivity", "Received broadcast: ${intent?.action}")
             intent?.let {
-                val cpuUsage = it.getFloatExtra(SimulationService.EXTRA_CPU_USAGE, -1f)
-                val ramUsage = it.getFloatExtra(SimulationService.EXTRA_RAM_USAGE, -1f)
+                val detailedUsage = it.getParcelableExtra<DetailedUsage>(SimulationService.EXTRA_DETAILED_USAGE)
+                detailedUsage?.let { usage ->
+                    updateUI(usage)
+                    updateChart(usage)
+                }
                 val isLoading = it.getBooleanExtra(SimulationService.EXTRA_IS_LOADING, false)
-                Log.d(
-                    "MainActivity",
-                    "CPU Usage: $cpuUsage, RAM Usage: $ramUsage, Is Loading: $isLoading"
-                )
                 runOnUiThread {
-                    if (cpuUsage != -1f) updateCpuUsage(cpuUsage)
-                    if (ramUsage != -1f) updateRamUsage(ramUsage)
                     if (isLoading) {
-                        showLoading("Adjusting RAM load...")
+                        showLoading("Adjusting resource usage...")
                     } else {
                         hideLoading()
                         if (!simulationSwitch.isChecked) {
-                            // Update UI to reflect that simulation is stopped
                             statusText.text = getString(R.string.status_idle)
                         }
                     }
                 }
             }
         }
+    }
+
+    private fun updateUI(usage: DetailedUsage) {
+        cpuProgressBar.progress = usage.cpuUsage.toInt()
+        cpuPercentage.text = getString(R.string.percentage_format, usage.cpuUsage.toInt())
+        ramProgressBar.progress = usage.ramUsage.toInt()
+        ramPercentage.text = getString(R.string.percentage_format, usage.ramUsage.toInt())
+        runningProcessesText.text = getString(R.string.running_processes_format, usage.runningProcesses)
+        availableRamText.text = getString(R.string.memory_format, usage.availableRam / (1024 * 1024))
+        totalRamText.text = getString(R.string.memory_format, usage.totalRam / (1024 * 1024))
     }
 
 }

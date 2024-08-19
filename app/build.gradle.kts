@@ -1,6 +1,7 @@
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.jetbrains.kotlin.android)
+    id("com.android.application")
+    id("org.jetbrains.kotlin.android")
+    id("kotlin-parcelize")
 }
 
 android {
@@ -36,6 +37,15 @@ android {
     buildFeatures {
         viewBinding = true
     }
+    kotlinOptions {
+        jvmTarget = "1.8"
+        freeCompilerArgs += "-Xuse-experimental=kotlinx.parcelize.ExperimentalParcelize"
+    }
+
+    buildFeatures {
+        dataBinding = true
+        viewBinding = true
+    }
 }
 
 dependencies {
@@ -44,7 +54,7 @@ dependencies {
     implementation(libs.material)
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
-    implementation(libs.mpandroidchart)  // Add this line for MPAndroidChart
+    implementation(libs.mpandroidchart)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

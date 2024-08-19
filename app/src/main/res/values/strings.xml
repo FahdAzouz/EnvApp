@@ -12,4 +12,9 @@
     <string name="cpu_intensity">CPU Intensity</string>
     <string name="ram_intensity">RAM Intensity</string>
     <string name="info_icon_description">App Information</string>
+    <string name="running_processes">Running Processes:</string>
+    <string name="running_processes_format">%d</string>
+    <string name="available_ram">Available RAM:</string>
+    <string name="total_ram">Total RAM:</string>
+    <string name="memory_format">%d MB</string>
 </resources>

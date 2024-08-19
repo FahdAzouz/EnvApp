@@ -217,7 +217,7 @@
         app:layout_constraintBottom_toTopOf="@+id/statusText"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/updateButton"
+        app:layout_constraintTop_toBottomOf="@id/usageChart"
         app:layout_constraintVertical_chainStyle="packed" />
 
     <TextView
@@ -231,5 +231,70 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/loadingIndicator" />
+
+    <TextView
+        android:id="@+id/runningProcessesLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/running_processes"
+        android:layout_marginTop="16dp"
+        app:layout_constraintTop_toBottomOf="@id/updateButton"
+        app:layout_constraintStart_toStartOf="parent"/>
+
+    <TextView
+        android:id="@+id/runningProcessesText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        app:layout_constraintTop_toTopOf="@id/runningProcessesLabel"
+        app:layout_constraintStart_toEndOf="@id/runningProcessesLabel"
+        tools:text="50"/>
+
+    <TextView
+        android:id="@+id/availableRamLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/available_ram"
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toBottomOf="@id/runningProcessesLabel"
+        app:layout_constraintStart_toStartOf="parent"/>
+
+    <TextView
+        android:id="@+id/availableRamText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        app:layout_constraintTop_toTopOf="@id/availableRamLabel"
+        app:layout_constraintStart_toEndOf="@id/availableRamLabel"
+        tools:text="2048 MB"/>
+
+    <TextView
+        android:id="@+id/totalRamLabel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/total_ram"
+        android:layout_marginTop="8dp"
+        app:layout_constraintTop_toBottomOf="@id/availableRamLabel"
+        app:layout_constraintStart_toStartOf="parent"/>
+
+    <TextView
+        android:id="@+id/totalRamText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        app:layout_constraintTop_toTopOf="@id/totalRamLabel"
+        app:layout_constraintStart_toEndOf="@id/totalRamLabel"
+        tools:text="4096 MB"/>
+
+    <!-- Usage Chart -->
+    <com.github.mikephil.charting.charts.LineChart
+        android:id="@+id/usageChart"
+        android:layout_width="match_parent"
+        android:layout_height="200dp"
+        android:background="#EEEEEE"
+        android:layout_marginTop="16dp"
+        app:layout_constraintTop_toBottomOf="@id/totalRamLabel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"/>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
