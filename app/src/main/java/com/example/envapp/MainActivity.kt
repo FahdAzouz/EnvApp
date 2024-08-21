@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.graphics.Color
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
@@ -22,9 +23,13 @@ import androidx.appcompat.widget.SwitchCompat
 import androidx.core.content.ContextCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.github.mikephil.charting.charts.LineChart
+import com.github.mikephil.charting.components.Legend
 import com.github.mikephil.charting.data.Entry
 import com.github.mikephil.charting.data.LineData
 import com.github.mikephil.charting.data.LineDataSet
+import com.github.mikephil.charting.formatter.ValueFormatter
+import com.github.mikephil.charting.components.XAxis
+import com.github.mikephil.charting.formatter.IndexAxisValueFormatter
 
 
 class MainActivity : AppCompatActivity() {
@@ -92,47 +97,79 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupChart() {
-        usageChart.description.isEnabled = false
-        usageChart.setTouchEnabled(true)
-        usageChart.isDragEnabled = true
-        usageChart.setScaleEnabled(true)
-        usageChart.setDrawGridBackground(false)
-        usageChart.setPinchZoom(true)
-        usageChart.axisLeft.setDrawGridLines(false)
-        usageChart.axisRight.setDrawGridLines(false)
-        usageChart.xAxis.setDrawGridLines(false)
+        usageChart.apply {
+            description.isEnabled = false
+            setTouchEnabled(true)
+            isDragEnabled = true
+            setScaleEnabled(true)
+            setPinchZoom(true)
+            setDrawGridBackground(false)
+
+            xAxis.apply {
+                position = XAxis.XAxisPosition.BOTTOM
+                setDrawGridLines(false)
+                labelCount = 5
+                valueFormatter = object : ValueFormatter() {
+                    override fun getFormattedValue(value: Float): String {
+                        return "${value.toInt()}s"
+                    }
+                }
+            }
+
+            axisLeft.apply {
+                setDrawGridLines(true)
+                axisMinimum = 0f
+                axisMaximum = 100f
+                labelCount = 5
+            }
+
+            axisRight.isEnabled = false
+
+            legend.apply {
+                form = com.github.mikephil.charting.components.Legend.LegendForm.LINE
+                textSize = 11f
+                textColor = Color.BLACK
+                verticalAlignment = com.github.mikephil.charting.components.Legend.LegendVerticalAlignment.BOTTOM
+                horizontalAlignment = com.github.mikephil.charting.components.Legend.LegendHorizontalAlignment.LEFT
+                orientation = com.github.mikephil.charting.components.Legend.LegendOrientation.HORIZONTAL
+                setDrawInside(false)
+            }
+        }
     }
 
-    // Update the updateChart function to use DetailedUsage
     private fun updateChart(detailedUsage: DetailedUsage) {
-        val data = usageChart.data
+        val data = usageChart.data ?: LineData().also { usageChart.data = it }
 
-        if (data == null) {
-            // If there's no data yet, create new datasets with mutable lists
-            val cpuDataSet = LineDataSet(mutableListOf(Entry(0f, detailedUsage.cpuUsage)), "CPU Usage")
-            cpuDataSet.color = ContextCompat.getColor(this, R.color.cpu_color)
-            cpuDataSet.setCircleColor(ContextCompat.getColor(this, R.color.cpu_color))
+        if (data.dataSetCount == 0) {
+            val cpuDataSet = LineDataSet(null, "CPU Usage").apply {
+                color = ContextCompat.getColor(this@MainActivity, R.color.cpu_color)
+                setCircleColor(ContextCompat.getColor(this@MainActivity, R.color.cpu_color))
+                lineWidth = 2f
+                circleRadius = 3f
+                setDrawCircleHole(false)
+                mode = LineDataSet.Mode.CUBIC_BEZIER
+            }
 
-            val ramDataSet = LineDataSet(mutableListOf(Entry(0f, detailedUsage.ramUsage)), "RAM Usage")
-            ramDataSet.color = ContextCompat.getColor(this, R.color.ram_color)
-            ramDataSet.setCircleColor(ContextCompat.getColor(this, R.color.ram_color))
+            val ramDataSet = LineDataSet(null, "RAM Usage").apply {
+                color = ContextCompat.getColor(this@MainActivity, R.color.ram_color)
+                setCircleColor(ContextCompat.getColor(this@MainActivity, R.color.ram_color))
+                lineWidth = 2f
+                circleRadius = 3f
+                setDrawCircleHole(false)
+                mode = LineDataSet.Mode.CUBIC_BEZIER
+            }
 
-            val newData = LineData(cpuDataSet, ramDataSet)
-            usageChart.data = newData
-        } else {
-            // If data exists, add new entries
-            data.addEntry(Entry(data.getDataSetByIndex(0).entryCount.toFloat(), detailedUsage.cpuUsage), 0)
-            data.addEntry(Entry(data.getDataSetByIndex(1).entryCount.toFloat(), detailedUsage.ramUsage), 1)
-
-            data.notifyDataChanged()
-            usageChart.notifyDataSetChanged()
-
-            // Limit the number of visible entries
-            usageChart.setVisibleXRangeMaximum(240f) // show last 60 seconds of data
-            usageChart.moveViewToX(data.entryCount.toFloat())
+            data.addDataSet(cpuDataSet)
+            data.addDataSet(ramDataSet)
         }
 
-        usageChart.invalidate()
+        data.addEntry(Entry(data.entryCount.toFloat(), detailedUsage.cpuUsage), 0)
+        data.addEntry(Entry(data.entryCount.toFloat(), detailedUsage.ramUsage), 1)
+
+        data.notifyDataChanged()
+        usageChart.notifyDataSetChanged()
+        usageChart.setVisibleXRangeMaximum(30f)
+        usageChart.moveViewToX(data.entryCount.toFloat())
     }
 
     private fun setupInfoIcon() {
