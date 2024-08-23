@@ -51,6 +51,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var availableRamText: TextView
     private lateinit var totalRamText: TextView
     private lateinit var usageChart: LineChart
+    private val CPU_MAX_INTENSITY = 90
+    private val RAM_MAX_INTENSITY = 80
+
 
     // In the MainActivity class, add this companion object
     companion object {
@@ -189,7 +192,7 @@ class MainActivity : AppCompatActivity() {
         - Real-time monitoring of resource usage
         - Background service for continuous simulation
 
-        Author: Fahd Azouz
+        Author: Visionary Crafter
         Version: 1.0
     """.trimIndent()
 
@@ -257,6 +260,7 @@ class MainActivity : AppCompatActivity() {
         startService(intent)
         Log.d("MainActivity", "Updated simulation intensity: CPU ${cpuIntensitySlider.progress}, RAM ${ramIntensitySlider.progress}")
     }
+
 
     private fun startSimulationService() {
         showLoading("Starting simulation...")
